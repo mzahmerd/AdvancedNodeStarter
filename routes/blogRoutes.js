@@ -5,6 +5,21 @@ const Blog = mongoose.model('Blog');
 
 module.exports = app => {
   app.get('/api/blogs/:id', requireLogin, async (req, res) => {
+    const redis = require('redis')
+    const redisUrl = 'redis:127.0.0.1:6379'
+    const client = redis.createClient(redisUrl)
+    const util = require('util')
+
+    // promisify get function to return promise instead of callback function
+    client.get = util.promisify(client.get)
+    
+    // do we have existing redis cache data for this query?
+    const cachedBlogs = await client.get(req.user.id)
+
+    // if yes, the respond to the request right away and return
+
+    // if no, we need to respond to request and update our cache to store this data
+
     const blog = await Blog.findOne({
       _user: req.user.id,
       _id: req.params.id
