@@ -15,31 +15,10 @@ module.exports=app => {
   });
 
   app.get('/api/blogs',requireLogin,async (req,res) => {
-    const redis=require('redis')
-    const redisUrl='redis://127.0.0.1:6379'
-    const client=redis.createClient(redisUrl)
-    const util=require('util')
-
-    // promisify get function to return promise instead of callback function
-    client.get=util.promisify(client.get)
-
-    // do we have existing redis cache data for this query?
-    const cachedBlogs=await client.get(req.user.id)
-
-    // if yes, the respond to the request right away and return
-    if(cachedBlogs) {
-      console.log("SERVING FROM CACHE")
-      return res.send(cachedBlogs)
-    }
-
-    // if no, we need to respond to request and update our cache to store this data
     const blogs=await Blog.find({
       _user: req.user.id
     });
 
-    client.set(req.user.id,JSON.stringify(blogs))
-
-    console.log("SERVING FROM MONGO DB")
     res.send(blogs);
   });
 
