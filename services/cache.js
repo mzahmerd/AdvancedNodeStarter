@@ -1,17 +1,32 @@
-const mongoose = require('mongoose')
+const mongoose=require('mongoose')
+const redis=require('redis')
+const util=require('util')
 
-const exec = mongoose.Query.prototype.exec
+const redisUrl='redis://127.0.0.1:6379'
+const client=redis.createClient(redisUrl)
 
-mongoose.Query.prototype.exec = function(){
-    console.log("IM ABOUT TO RUN A QUERY")
+// Promify redis get function
+client.get=util.promisify(client.get)
 
-    console.log(this.getQuery())
-    console.log(this.mongooseCollection.name)
+const exec=mongoose.Query.prototype.exec
 
-   const key = Object.assign({}, this.getQuery(), {
-        collection:this.mongooseCollection.name
-    })
+mongoose.Query.prototype.exec= async function() {
+    // Create a unique cache key for each distinct query
+    const key=JSON.stringify(Object.assign({},this.getQuery(),{
+        collection: this.mongooseCollection.name
+    }))
 
-    console.log(key)
-    return exec.apply(this, arguments)
+    //  check redis for cache from this query
+    const cacheValue = await client.get(key)
+
+    // if there is cache of this query, return it.
+    if(cacheValue){
+        return JSON.parse(cacheValue)
+    }
+    // otherwise, issue the query and store the result in redis
+    const result =  await exec.apply(this,arguments)
+    client.set(key, JSON.stringify(result))
+    
+    return result
+    
 }
