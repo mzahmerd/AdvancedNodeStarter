@@ -10,7 +10,20 @@ client.get=util.promisify(client.get)
 
 const exec=mongoose.Query.prototype.exec
 
+// Create cache toggler function
+mongoose.Query.prototype.cache = function(){
+    this.useCache = true
+
+    // return the query properties  to this function chainable
+    return this
+}
+
 mongoose.Query.prototype.exec=async function() {
+    // if not chacheable, run exec function.
+    if(!this.useCache){
+       return exec.apply(this, arguments)
+    }
+
     // Create a unique cache key for each distinct query
     const key=JSON.stringify(Object.assign({},this.getQuery(),{
         collection: this.mongooseCollection.name
